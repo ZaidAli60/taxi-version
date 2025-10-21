@@ -2,22 +2,186 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>TaxiVision Live Stream</title>
+  <title>🚖 TaxiVision Live Monitoring</title>
+
+  <!-- ✅ Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+
   <style>
-    body { background:#000; color:#fff; text-align:center; }
-    img { width:80%; border-radius:10px; margin-top:20px; }
+    /* Global Reset */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: radial-gradient(circle at center, #0c0c0c, #000);
+      color: #fff;
+      font-family: 'Poppins', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Header Section */
+    header {
+      text-align: center;
+      margin-bottom: 15px;
+    }
+
+    header h1 {
+      font-size: 2.3rem;
+      font-weight: 700;
+      color: #FFD700;
+      text-shadow: 0 0 25px rgba(255, 215, 0, 0.5);
+      animation: fadeInDown 1.2s ease;
+    }
+
+    header p {
+      font-size: 1rem;
+      color: #aaa;
+      letter-spacing: 1px;
+      margin-top: 4px;
+      animation: fadeInDown 1.5s ease;
+    }
+
+    /* Live Monitoring Badge */
+    .live-badge {
+      display: inline-flex;
+      align-items: center;
+      background: rgba(255, 0, 0, 0.15);
+      border: 1px solid rgba(255, 0, 0, 0.4);
+      color: #ff4c4c;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 50px;
+      font-size: 0.9rem;
+      letter-spacing: 1px;
+      margin-top: 10px;
+      animation: pulse 1.5s infinite;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ff4c4c;
+      margin-right: 8px;
+      box-shadow: 0 0 10px rgba(255, 76, 76, 0.8);
+    }
+
+    /* Video Container */
+    .video-wrapper {
+      position: relative;
+      width: 80%;
+      max-width: 900px;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 0 40px rgba(255, 215, 0, 0.15);
+      border: 2px solid rgba(255, 215, 0, 0.2);
+      animation: fadeInUp 1.3s ease;
+    }
+
+    #video {
+      width: 100%;
+      height: auto;
+      display: block;
+      object-fit: cover;
+      border-radius: 16px;
+    }
+
+    /* Overlay gradient at bottom */
+    .video-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 12px 18px;
+      background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .overlay-text {
+      font-size: 0.9rem;
+      color: #FFD700;
+      opacity: 0.9;
+    }
+
+    /* Connection Status */
+    .status {
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 8px 14px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.08);
+      color: #00ff88;
+      border: 1px solid rgba(255,255,255,0.2);
+      backdrop-filter: blur(6px);
+      transition: all 0.3s;
+    }
+
+    .status.disconnected {
+      color: #ff4c4c;
+    }
+
+    /* Animations */
+    @keyframes fadeInDown {
+      from { opacity: 0; transform: translateY(-15px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulse {
+      0% { opacity: 0.5; transform: scale(0.95); }
+      50% { opacity: 1; transform: scale(1.05); }
+      100% { opacity: 0.5; transform: scale(0.95); }
+    }
   </style>
 </head>
+
 <body>
-  <h1>🚖 TaxiVision Live Feed</h1>
-  <img id="video" src="" alt="waiting for feed..." />
+  <header>
+    <h1>🚖 TaxiVision Dashboard</h1>
+    <p>Real-Time AI-Powered Live Monitoring</p>
+    <div class="live-badge"><span class="dot"></span>LIVE MONITORING</div>
+  </header>
+
+  <div class="video-wrapper">
+    <img id="video" src="" alt="Waiting for live feed..." />
+    <div class="video-overlay">
+      <span class="overlay-text">Camera #01 — Front View</span>
+      <span id="status" class="status">🟢 Connected</span>
+    </div>
+  </div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
     const video = document.getElementById("video");
+    const statusEl = document.getElementById("status");
+
+    socket.on("connect", () => {
+      console.log("✅ Connected to backend");
+      statusEl.textContent = "🟢 Connected";
+      statusEl.classList.remove("disconnected");
+    });
+
+    socket.on("disconnect", () => {
+      console.log("❌ Disconnected from backend");
+      statusEl.textContent = "🔴 Disconnected";
+      statusEl.classList.add("disconnected");
+    });
 
     socket.on("video-feed", (data) => {
-      video.src = data; // display base64 image stream
+      if (data && data.startsWith("data:image/")) {
+        video.src = data;
+      }
     });
   </script>
 </body>
