@@ -1,35 +1,47 @@
-require("dotenv").config()
-const express = require("express")
-const cors = require("cors")
-const morgan = require("morgan")
-const bodyParser = require("body-parser")
-const { connectDB } = require("./config/db")
+require("dotenv").config();
+const express = require("express");
+const cors = require("cors");
+const morgan = require("morgan");
+const bodyParser = require("body-parser");
+const http = require("http");
+const { Server } = require("socket.io");
+const path = require("path");
+const { connectDB } = require("./config/db");
 
-// routes
-const media = require("./routes/media")
+// Import your routes
+const media = require("./routes/media");
 
-const { APP_URL, APP_URL_1, PORT = 8000 } = process.env
+const { APP_URL, APP_URL_1, PORT = 8000 } = process.env;
 
+// Connect to DB
 connectDB();
 
-const app = express()
+const app = express();
+const server = http.createServer(app);
 
-app.use(cors({
-    origin: [APP_URL, APP_URL_1],
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', "PATCH"],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key']
-}))
+// ✅ Initialize Socket.IO
+const io = new Server(server, {
+    cors: {
+        origin: [APP_URL, APP_URL_1, "*"],
+        methods: ["GET", "POST"],
+    },
+});
 
-// app.use((req, res, next) => {
-//     const apiKey = req.headers['x-api-key'];
-//     if (apiKey !== X_API_KEY) { return res.status(403).json({ message: 'Invalid X API Key' }); }
-//     next();
-// });
-
-app.use(morgan("dev"))
-app.use(bodyParser.json())
+// ✅ Middleware setup
+app.use(
+    cors({
+        origin: [APP_URL, APP_URL_1, "*"],
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+        allowedHeaders: ["Content-Type", "Authorization", "x-api-key"],
+    })
+);
+app.use(morgan("dev"));
+app.use(bodyParser.json({ limit: "50mb" }));
 app.use(express.json());
+app.use(express.static("public"));
 
+
+// ✅ Query cleanup middleware
 const formatQueryValues = (obj) => {
     Object.keys(obj).forEach((key) => {
         if (obj[key] === "null") obj[key] = null;
@@ -37,18 +49,49 @@ const formatQueryValues = (obj) => {
     });
     return obj;
 };
-
 app.use((req, res, next) => {
     req.query = formatQueryValues(req.query);
     next();
 });
 
+// ✅ Routes
 app.get("/", (req, res) => {
-    res.send("Server is running")
-})
+    res.send("🚖 TaxiVision Backend is running successfully.");
+});
 
-app.use("/media", media)
+app.use("/media", media);
 
-app.listen(PORT, (req, res) => {
-    console.log(`Server is running on PORT ${PORT}`)
-})
+// ✅ Test Socket.IO Route
+app.get("/api/test-socket", (req, res) => {
+    res.json({
+        message: "Socket.IO test route working ✅",
+        socket_url: `ws://localhost:${PORT}`,
+    });
+});
+
+// ✅ Serve viewer dashboard (optional)
+app.use(express.static(path.join(__dirname, "public")));
+
+io.on("connection", (socket) => {
+    console.log("📡 New socket connected:", socket.id);
+
+    socket.on("ping-server", (msg) => {
+        console.log("📨 Ping received from client:", msg);
+        socket.emit("pong-client", "Pong from server ✅");
+    });
+
+    socket.on("video-frame", (frameData) => {
+        // Broadcast frame to all connected viewers
+        socket.broadcast.emit("video-feed", frameData);
+    });
+
+    socket.on("disconnect", () => {
+        console.log("❌ Socket disconnected:", socket.id);
+    });
+});
+
+
+// ✅ Start Server
+server.listen(PORT, () => {
+    console.log(`✅ Server running on PORT ${PORT}`);
+});
